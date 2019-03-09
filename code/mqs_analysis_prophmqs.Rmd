@@ -1,0 +1,123 @@
+---
+title: "MQS Analysis for Prophylactic medication and Acupuncture"
+author: "Bhuvan, Darshan"
+date: "March 9, 2019"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+data = read.csv("../data/data_filtered.csv")
+```
+
+#### Background: (v-'variable name in the data', g-'variable name in the graph')
+We consider the treatment group assignment (v-group) as primary predictor (g-X). This is referred as 'Acupunture' since it is a binary treatment group assignment. Our primary ourcome variable is the change in the Headache Severity Score (HSS) after 12-months, i.e., difference between 12-months and baseline (v-delta5, g-Y). The HSS at 12-months is an aggregate of everyday HSS entered for four weeks by patients after 12-months. At the same time, the patients in both control and treatment group were also taking Prophylactic medication (the usual standard medication given for prevention of headache) quantified by the MQS score (v-prophmqs5, g-M) referred as MEDS from now onwards.
+
+We need to determine whether MEDS mediated or moderated the effect of Acupunture on the change in the HSS after 12-months. The alpha is set at 0.05 for this analysis.
+
+Mediation Effect Analysis was carried out as described in the article: [http://web.pdx.edu/~newsomj/semclass/ho_mediation.pdf](http://web.pdx.edu/~newsomj/semclass/ho_mediation.pdf)
+
+_Note:_ For this analysis, we shall filter the data and consider only patients who completed the study till 12-months (data_filtered.csv).
+
+```{r}
+# Checking zero-order relationship: X -> Y
+print("Checking zero-order relationship: X -> Y")
+s1_model = lm(delta5 ~ group, data=data)
+summary(s1_model)
+
+# Checking zero-order relationship: X -> M
+print("Checking zero-order relationship: X -> M")
+s2_model = lm(prophmqs5 ~ group, data=data)
+summary(s2_model)
+
+# Checking zero-order relationship: M -> Y
+print("Checking zero-order relationship: M -> Y")
+s3_model = lm(delta5 ~ prophmqs5, data=data)
+summary(s3_model)
+
+# Checking effect of M controlling for X
+print("Checking effect of M controlling for X")
+s4_model = lm(delta5 ~ prophmqs5 + group, data=data)
+summary(s4_model)
+
+# Checking Moderation effect caused by M (interaction effect between X and M)
+print("Checking Moderation effect caused by M (interaction effect between X and M)")
+moderator_model = lm(delta5 ~ group*prophmqs5, data=data)
+summary(moderator_model)
+```
+
+From the above results:
+1. Mediation effect: It is unlikely for M to have a mediation effect as there is no zero-order significant effect of M on Y. Also, when controlled for X, the effect of M on Y is not significant.
+
+2. Moderator effect: Since we found that M cannot be a mediator, we now consider if M is a Moderator. Considering the interaction model, we see that there is no significant interaction effect between X and M. Therefore, there is not enough evidence to reject the hypothesis that the effect of X on Y doesn't change for unit difference in M.
+
+```{r}
+data$avg_mqs = (data$prophmqs5 + data$prophmqs2) / 2
+
+# Consider M as average MQS.
+print("Consider M as average MQS")
+
+# Checking zero-order relationship: X -> Y
+print("Checking zero-order relationship: X -> Y")
+s1_model = lm(delta5 ~ group, data=data)
+summary(s1_model)
+
+# Checking zero-order relationship: X -> M
+print("Checking zero-order relationship: X -> M")
+s2_model = lm(avg_mqs ~ group, data=data)
+summary(s2_model)
+
+# Checking zero-order relationship: M -> Y
+print("Checking zero-order relationship: M -> Y")
+s3_model = lm(delta5 ~ avg_mqs, data=data)
+summary(s3_model)
+
+# Checking effect of M controlling for X
+print("Checking effect of M controlling for X")
+s4_model = lm(delta5 ~ avg_mqs + group, data=data)
+summary(s4_model)
+
+# Checking Moderation effect caused by M (interaction effect between X and M)
+print("Checking Moderation effect caused by M (interaction effect between X and M)")
+moderator_model = lm(delta5 ~ group * avg_mqs, data=data)
+summary(moderator_model)
+```
+
+Moreover, in order check whether the average MQS score from phrophylactic medications taken at 3-months and at 12-months acts as a mediator or moderator, the above analysis was repeated with the average MQS score. We observe similar results, suggesting that average MQS is neither a Mediator nor Moderator.
+
+#### Extra exploration:
+```{r}
+# Checking zero-order relationship: X -> Y
+print("Checking zero-order relationship: X -> Y")
+s1_model = lm(delta5 ~ acuptreatments, data=data)
+summary(s1_model)
+
+# Checking zero-order relationship: X -> M
+print("Checking zero-order relationship: X -> M")
+s2_model = lm(prophmqs5 ~ acuptreatments, data=data)
+summary(s2_model)
+
+# Checking zero-order relationship: M -> Y
+print("Checking zero-order relationship: M -> Y")
+s3_model = lm(delta5 ~ prophmqs5, data=data)
+summary(s3_model)
+
+# Checking effect of M controlling for X
+print("Checking effect of M controlling for X")
+s4_model = lm(delta5 ~ prophmqs5 + acuptreatments, data=data)
+summary(s4_model)
+
+# Checking Moderation effect caused by M (interaction effect between X and M)
+print("Checking Moderation effect caused by M (interaction effect between X and M)")
+moderator_model = lm(delta5 ~ acuptreatments*prophmqs5, data=data)
+summary(moderator_model)
+```
+
+The acuptreatments (number of acupunture treatments) has no effect on delta5 at all. Therefore, its good to ignore it. At least group has an effect. Also, considering acuptreatments violates randomization, as randomization is vs 0 and any positive number, which is kind of shaky.
+
+## Analysis of Degree of Compliance effect:
+Note that each patient in the treatment received upto 15 acupuncture treatments (v-acuptreatments). (Also, we consider a patient as 'complier' if he promptly received at least 9 - median of acupunture treatments received by patients in the treatment group - acupunture treatments (v-complier)).
+
