@@ -1,4 +1,4 @@
-# acupuncture_analysis
+# Acupuncture Analysis
 DATA 557 Final Project
 
 # Presentation Links:
