@@ -55,7 +55,7 @@ path c: X -> Y
 6. Step 6: Conduct a regression analysis with X predicting Y including an interaction term for X:M, $Y = B_0 + B_1X + B_2M + B_3(X)(M) + e$. We test the Null Hypothesis that there is no interaction effect X:M i.e., $H_0: B_3= 0$. This determines the evidence for existence of moderation (interaction) effect of M on X.
 
 ```{r}
-counfounders = c(age, sex, chronicity, acupuncturist, prophmqs1, migraine, pk1)
+# counfounders = c(age, sex, chronicity, acupuncturist, prophmqs1, migraine, pk1)
 
 # Checking zero-order relationship: X -> Y
 print("Checking zero-order relationship: X -> Y")
@@ -95,7 +95,8 @@ Results and Discussion:
 
 #### Without counfounders test:
 ```{r}
-counfounders = c(age, sex, chronicity, acupuncturist, prophmqs1, migraine, pk1)
+# counfounders = c(age, sex, chronicity, acupuncturist, prophmqs1, migraine,
+# pk1)
 
 # Checking zero-order relationship: X -> Y
 print("Checking zero-order relationship: X -> Y")
@@ -119,7 +120,7 @@ summary(s4_model)
 
 # Checking Moderation effect caused by M (interaction effect between X and M)
 print("Checking Moderation effect caused by M (interaction effect between X and M)")
-moderator_model = lm(delta5 ~ group*totalmeds5, data=data)
+moderator_model = lm(delta5 ~ group*prophmqs5, data=data)
 summary(moderator_model)
 ```
 
