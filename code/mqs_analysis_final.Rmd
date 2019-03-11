@@ -1,5 +1,5 @@
 ---
-title: "Analysis of the effect of pain and prophylactic medication MQS and acupuncture on headache"
+title: "Analysis of the effect of prophylactic medication (MQS score) and acupuncture treatment on headache"
 author: "Darshan, Bhuvan"
 output: pdf_document
 ---
@@ -10,21 +10,93 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ```{r}
 data = read.csv("../data/data_filtered.csv")
-data$acuptreatments[is.na(data$acuptreatments)] = 0
-data$totalmeds5 = data$painmedspk5 + data$prophmqs5
-data$totalmeds2 = data$painmedspk2 + data$prophmqs2
 ```
 
-#### Background: (v-'variable name in the data', g-'variable name in the graph')
-We consider the treatment group assignment (v-group) as primary predictor (g-X). This is referred as 'Acupunture' since it is a binary treatment group assignment. Our primary ourcome variable is the change in the Headache Severity Score (HSS) after 12-months, i.e., difference between 12-months and baseline (v-delta5, g-Y). The HSS at 12-months is an aggregate of everyday HSS entered for four weeks by patients after 12-months. At the same time, the patients in both control and treatment group were also taking Prophylactic medication (the usual standard medication given for prevention of headache) quantified by the MQS score (v-totalmeds5, g-M) referred as MEDS from now onwards.
+#### Problem Description:
+We have found Acupuncture treatment to have a significant effect on the Headache Severiry Score (HSS) score change with adjustment to the confounders. From the study, both the control and treatment group were given usual headache prevention medicine (Prophylactic Medication measured by MQS score), and the treatment group were given Acupunture treatments as well. Therefore, we idetify the Prophylactic Medication MQS score to be a potential Mediator or Moderator. Therefore, we shall test for any signifiance Mediation (Full or Partial). If we do not find enough evidence for mediation, we shall test for Moderation (interaction) effect.
 
-We need to determine whether MEDS mediated or moderated the effect of Acupunture on the change in the HSS after 12-months. The alpha is set at 0.05 for this analysis.
+#### Statistical Analysis:
+We consider the treatment group assignment as primary predictor (X). This is referred as 'Acupunture' since it is a binary treatment group assignment. Our primary ourcome variable is the change in the HSS after 12-months, i.e., difference between 12-months and baseline (Y). The HSS at 12-months is an aggregate of everyday HSS entered for four weeks by patients after 12-months. At the same time, the patients in both control and treatment group were also taking Prophylactic medication (the usual standard medication given for prevention of headache) quantified by the MQS score (M) referred as MEDS from now onwards.
 
-Mediation Effect Analysis was carried out as described in the article: [http://web.pdx.edu/~newsomj/semclass/ho_mediation.pdf](http://web.pdx.edu/~newsomj/semclass/ho_mediation.pdf)
+We need to determine whether MEDS mediated or moderated the effect of Acupunture on the change in the HSS after 12-months. The significance level (alpha) is set at 0.05 for this analysis.
 
 _Note:_ For this analysis, we shall filter the data and consider only patients who completed the study till 12-months (data_filtered.csv).
 
+Mediation Effect Analysis was carried out as follows [4]:
+Please refer to the graph from Fig. 1 (#TODO: Need to be put up in report).
+X: Treatment group assignment - primary predictor
+M: Prophylactic Medication MQS score - Potential mediator
+Y: Change in HSS score after 12-months - Response variable
+
+_Note_: The assumptions and the validity of each test needs to be verified.
+_Note_: All the below tests need to be conducted with adjustment for the confounders. # TODO: Is it valid to do this? Or would the interpretations change? Check this out: https://stats.stackexchange.com/questions/62247/how-can-i-test-control-variables-within-a-mediation-analysis, which refers to [5]. Can you please check if this way of including confounders is valid (We can ask Thomas also). If not, we can do without confounders, but mention this as limitation.
+
+
+path a: X -> M
+path b: M -> Y
+path c: X -> Y
+
+1. Step 1: Conduct a simple regression analysis with X predicting Y to test for path c alone, $Y = B_0 + B_1X + e$. We test the Null Hypothesis that there is no effect of X on Y i.e., $H_0: B_1= 0$.
+
+2. Step 2: Conduct a simple regression analysis with X predicting M to test for path c alone, $M = B_0 + B_1X + e$. We test the Null Hypothesis that there is no effect of X on M i.e., $H_0: B_1= 0$.
+
+3. Step 3: Conduct a simple regression analysis with M predicting Y to test for path c alone, $Y = B_0 + B_1M + e$. We test the Null Hypothesis that there is no effect of M on Y i.e., $H_0: B_1= 0$.
+
+- The steps 1-3 establish the existence of zero-order relationships. If one or more of these relationships are nonsignificant, we decide to conclude that mediation is not possible or likely (although this is not always true [5]). If significant relationships are found from Step 1-3, then we conduct Step 4.
+
+4. Step 4: Conduct a multiple regression analysis with X and M predicting Y, $Y = B_0 + B_1X + B_2M + e$. We test the Null Hypothesis that there is no effect of M on Y when adjusted for X i.e., $H_0: B_2= 0$.
+
+- In Step 4, if the effect of M (path b) remains significant after controlling for X, then some form of mediation is supported. If this is true, and if X is no longer significant when M is controlled, then the finding supports full mediation. And, if X is still significant, the finding supports partial mediation. In order to find the statistical significance of mediation effect, proceed to Step 5 and ignore Step 6.
+
+- In Step 4, if the effect of M (path b) is not significant after controlling for X, then Mediation effect is not likely. Hence, proceed to Step 6 to test for Moderation effect.
+
+5. Step 5: Determine the significance of indirect effect using Sodel Product of Coefficients Approach - $B_i = (B_2)(B_1)$. Here $B_2$ is taken from model from Step 4, and $B_1$ is taken from model from Step 2. Determine the significance using Bootstrap method - bootstrap sampling is done on patient ids, and corresponding values for X, M and Y are collected and $B_i$ is calculated for 5000 bootstrap samples. Bootstrap standard error ($SE(B_i)$) is calculated by taking standard deviation of collected array of $B_i$s. Then the Z statistic - $B_i/SE(B_i)$ is calculated and compared to a Normal distribution to get a p-value. If there exists statistical significance for the indirect effect, then the mediation effect can be considered statistically signifianct.
+
+6. Step 6: Conduct a regression analysis with X predicting Y including an interaction term for X:M, $Y = B_0 + B_1X + B_2M + B_3(X)(M) + e$. We test the Null Hypothesis that there is no interaction effect X:M i.e., $H_0: B_3= 0$. This determines the evidence for existence of moderation (interaction) effect of M on X.
+
 ```{r}
+counfounders = c(age, sex, chronicity, acupuncturist, prophmqs1, migraine, pk1)
+
+# Checking zero-order relationship: X -> Y
+print("Checking zero-order relationship: X -> Y")
+s1_model = lm(delta5 ~ group + age + sex + chronicity + acupuncturist + prophmqs1 + migraine + pk1, data=data)
+summary(s1_model)
+
+# Checking zero-order relationship: X -> M
+print("Checking zero-order relationship: X -> M")
+s2_model = lm(prophmqs5 ~ group + age + sex + chronicity + acupuncturist + prophmqs1 + migraine + pk1, data=data)
+summary(s2_model)
+
+# Checking zero-order relationship: M -> Y
+print("Checking zero-order relationship: M -> Y")
+s3_model = lm(delta5 ~ prophmqs5 + age + sex + chronicity + acupuncturist + prophmqs1 + migraine + pk1, data=data)
+summary(s3_model)
+
+# Checking effect of M controlling for X
+print("Checking effect of M controlling for X")
+s4_model = lm(delta5 ~ prophmqs5 + group + age + sex + chronicity + acupuncturist + prophmqs1 + migraine + pk1, data=data)
+summary(s4_model)
+
+# Checking Moderation effect caused by M (interaction effect between X and M)
+print("Checking Moderation effect caused by M (interaction effect between X and M)")
+moderator_model = lm(delta5 ~ group*prophmqs5 + age + sex + chronicity + acupuncturist + prophmqs1 + migraine + pk1, data=data)
+summary(moderator_model)
+```
+
+Results and Discussion:
+# This can be ignored. Old results, just kept for reference.
+1. Mediation effect: It is unlikely for M to have a mediation effect as there is no zero-order significant effect of M on Y. Also, when controlled for X, the effect of M on Y is not significant.
+
+2. Moderator effect: Since we found that M cannot be a mediator, we now consider if M is a Moderator. Considering the interaction model, we see that there is no significant interaction effect between X and M. Therefore, there is not enough evidence to reject the hypothesis that the effect of X on Y doesn't change for unit difference in M.
+
+#### Limitation:
+- We have not explored how confounders could affect the mediation analysis. There are complex methods to test mediation with control variables [5].
+- There could be multiple variables which could be potential mediators like Pain medication MQS score, Number of General Practitioner Visits etc. which have not been considered in this analysis. There exists complex procedures to perform meidation analysis for multiple potential mediators [6], which can be included in the future research.
+
+#### Without counfounders test:
+```{r}
+counfounders = c(age, sex, chronicity, acupuncturist, prophmqs1, migraine, pk1)
+
 # Checking zero-order relationship: X -> Y
 print("Checking zero-order relationship: X -> Y")
 s1_model = lm(delta5 ~ group, data=data)
@@ -32,17 +104,17 @@ summary(s1_model)
 
 # Checking zero-order relationship: X -> M
 print("Checking zero-order relationship: X -> M")
-s2_model = lm(totalmeds5 ~ group, data=data)
+s2_model = lm(prophmqs5 ~ group, data=data)
 summary(s2_model)
 
 # Checking zero-order relationship: M -> Y
 print("Checking zero-order relationship: M -> Y")
-s3_model = lm(delta5 ~ totalmeds5, data=data)
+s3_model = lm(delta5 ~ prophmqs5, data=data)
 summary(s3_model)
 
 # Checking effect of M controlling for X
 print("Checking effect of M controlling for X")
-s4_model = lm(delta5 ~ totalmeds5 + group, data=data)
+s4_model = lm(delta5 ~ prophmqs5 + group, data=data)
 summary(s4_model)
 
 # Checking Moderation effect caused by M (interaction effect between X and M)
@@ -51,75 +123,9 @@ moderator_model = lm(delta5 ~ group*totalmeds5, data=data)
 summary(moderator_model)
 ```
 
-From the above results:
-1. Mediation effect: It is unlikely for M to have a mediation effect as there is no zero-order significant effect of M on Y. Also, when controlled for X, the effect of M on Y is not significant.
+#### References:
+[4] Web Article - [http://web.pdx.edu/~newsomj/semclass/ho_mediation.pdf](http://web.pdx.edu/~newsomj/semclass/ho_mediation.pdf)
 
-2. Moderator effect: Since we found that M cannot be a mediator, we now consider if M is a Moderator. Considering the interaction model, we see that there is no significant interaction effect between X and M. Therefore, there is not enough evidence to reject the hypothesis that the effect of X on Y doesn't change for unit difference in M.
+[5]. MacKinnon, David P., Amanda J. Fairchild, and Matthew S. Fritz. "Mediation analysis." Annu. Rev. Psychol. 58 (2007): 593-614.
 
-```{r}
-data$avg_mqs = (data$totalmeds5 + data$totalmeds2) / 2
-
-# Consider M as average MQS.
-print("Consider M as average MQS")
-
-# Checking zero-order relationship: X -> Y
-print("Checking zero-order relationship: X -> Y")
-s1_model = lm(delta5 ~ group, data=data)
-summary(s1_model)
-
-# Checking zero-order relationship: X -> M
-print("Checking zero-order relationship: X -> M")
-s2_model = lm(avg_mqs ~ group, data=data)
-summary(s2_model)
-
-# Checking zero-order relationship: M -> Y
-print("Checking zero-order relationship: M -> Y")
-s3_model = lm(delta5 ~ avg_mqs, data=data)
-summary(s3_model)
-
-# Checking effect of M controlling for X
-print("Checking effect of M controlling for X")
-s4_model = lm(delta5 ~ avg_mqs + group, data=data)
-summary(s4_model)
-
-# Checking Moderation effect caused by M (interaction effect between X and M)
-print("Checking Moderation effect caused by M (interaction effect between X and M)")
-moderator_model = lm(delta5 ~ group * avg_mqs, data=data)
-summary(moderator_model)
-```
-
-Moreover, in order check whether the average MQS score from phrophylactic medications taken at 3-months and at 12-months acts as a mediator or moderator, the above analysis was repeated with the average MQS score. We observe similar results, suggesting that average MQS is neither a Mediator nor Moderator.
-
-#### Extra exploration:
-```{r}
-# Checking zero-order relationship: X -> Y
-print("Checking zero-order relationship: X -> Y")
-s1_model = lm(delta5 ~ acuptreatments, data=data)
-summary(s1_model)
-
-# Checking zero-order relationship: X -> M
-print("Checking zero-order relationship: X -> M")
-s2_model = lm(totalmeds5 ~ acuptreatments, data=data)
-summary(s2_model)
-
-# Checking zero-order relationship: M -> Y
-print("Checking zero-order relationship: M -> Y")
-s3_model = lm(delta5 ~ totalmeds5, data=data)
-summary(s3_model)
-
-# Checking effect of M controlling for X
-print("Checking effect of M controlling for X")
-s4_model = lm(delta5 ~ totalmeds5 + acuptreatments, data=data)
-summary(s4_model)
-
-# Checking Moderation effect caused by M (interaction effect between X and M)
-print("Checking Moderation effect caused by M (interaction effect between X and M)")
-moderator_model = lm(delta5 ~ acuptreatments*totalmeds5, data=data)
-summary(moderator_model)
-```
-
-The acuptreatments (number of acupunture treatments) has no effect on delta5 at all. Therefore, its good to ignore it. At least group has an effect. Also, considering acuptreatments violates randomization, as randomization is vs 0 and any positive number, which is kind of shaky.
-
-## Analysis of Degree of Compliance effect:
-Note that each patient in the treatment received upto 15 acupuncture treatments (v-acuptreatments). (Also, we consider a patient as 'complier' if he promptly received at least 9 - median of acupunture treatments received by patients in the treatment group - acupunture treatments (v-complier)).
-
+[6]. VanderWeele, Tyler, and Stijn Vansteelandt. "Mediation analysis with multiple mediators." Epidemiologic methods 2.1 (2014): 95-115.
