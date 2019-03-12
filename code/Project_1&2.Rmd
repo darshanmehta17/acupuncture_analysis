@@ -1,0 +1,117 @@
+---
+title: "Project"
+author: "Yash Rajeshbhai Parikh"
+date: "March 11, 2019"
+output: pdf_document
+fontsize: 18pt
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Before we proceed to begin our study, there is one thing we would like to mention. There were 401 people who agreed to participate in this 12-monthy study, but 100 people dropped out during the duration of the study. 
+
+# So, the scores at the end of 12 months aren't available for them. Now, there was randomized minimization applied at the beginning of the study to ensure independent data points and equal assignment to the control and treatment groups but due to the dropout, there might be an inherent bias in the analysis that we proceed with. 
+
+# We will consider this towards the end of the study and try to do some dropout analysis to examine this bias in more detail.
+
+
+
+# 1. This analysis is focussed on analysing the effect of acupuncture on headache severity score and emotional well being. 
+
+
+# Firstly, for the headache severity score, we look at the difference in the headache severity scores between the 12 months, which marks the end of the study and the headache severity score at the baseline and try to examine whether the application of acupuncture treatment had any effect on it.
+# According to the convention, high scores of headache severity indicate high intensity of headache and vice versa for lower scores.
+
+## We do this study using simple linear regression to determine the effect of treatment group assignment on the difference in the headache severity score. 
+
+Firstly, we read the data into a dataframe and extract the target variables and group variables from the dataset.
+
+```{r}
+df <- read.csv("C:\\Users\\Yash R Parikh\\OneDrive\\UWash\\Quarter 2\\DATA 557 - BioStat\\Project\\clean_data.csv")
+target <- df$pk5 - df$pk1
+group1 <- df$group
+```
+
+# We first try to verify the assumptions for our regression analysis
+
+## Independence: The data was collected using randomized minimization using minimization for the variables age, sex, diagnosis(migraine or tension-type), headache score at baseline, number of years of headache disorder(chronicity), and number of patients already allocated to each group, averaged separately by site. Patients randomised to acupuncture received, in addition to standard care from general practitioners, up to 12 treatments over three months from an advanced member of the Acupuncture Association of Chartered Physiotherapists. Hence, we can assume independence both between the control and treatment groups, and also within each groups.
+
+# Now, we try to justify the assumptions for equal variance, Linearity and Normality
+
+```{r}
+model <- lm(target~group1)
+par(mfrow = c(2,2), mar = c(5,4,2,1))
+plot(lm(target~group1))
+```
+
+## Equal Variance: Looking at the residuals vs Fitted values plot, we can clearly see that the residuals have approximately constant variance. Hence, the equal variance assumption is satisfied here
+
+## Linearity: Over and above this, the residual vs Fitted vales plot also doesn't exhibit any smooth curve, which justifies the linearity in the relationship. (Also, there are only two groups, so linearity assumption will be implicitly satisfied)
+
+## Normality: The QQ plot suggests some deviation from normality, but as our sample size is huge, we can go ahead with our analysis.
+
+# Hence, now as the assumptions are satisfied, we move towards building the regression model, and try to interpret it
+
+```{r}
+print(summary(lm(target ~ group1)))
+```
+
+Hence, we get the intercept as -4.3573 and the group coefficient as -3.9620.
+The coefficient of the group variable can be interpreted as the estimated change in mean of the difference in headache severity score due to the treatment group assignment is -3.96 i.e. the headache severity score decreases on an average by 3.96 due to the accupuncture treatment. 
+Also, this coefficient is highly statistically significant with p-value less than 0.05
+
+## Hence, we can say that we see evidence for the effect of treatment group assignment on the difference in the headache severity scores.
+
+# In a similar fashion for emotional well being score, the target variable in this case will be the difference in the emotional well being score between the readings at the end of 12 months and that at the baseline. We will try to analyse the effect of the acupuncture treatment on the emotional well being of the people involved in the study. The convention in this case is that higher emotional well being score indicates more emotional stability, hence high values are desirable. 
+
+# We first try to verify the assumptions for our regression analysis
+
+## Independence: The justification for independence of the samples between groups and also within groups is same as before.
+
+# Now, we try to justify the assumptions for equal variance, Linearity and Normality
+
+```{r}
+model_ewb <- lm((ewb5 - ewb1)~group, data = df)
+par(mfrow = c(2,2), mar = c(5,4,2,1))
+plot(model_ewb)
+```
+
+## Equal Variance: Looking at the residuals vs Fitted values plot, we can clearly see that the residuals have approximately constant variance. Hence, the equal variance assumption is satisfied here
+
+## Linearity: Over and above this, the residual vs Fitted vales plot also doesn't exhibit any smooth curve, which justifies the linearity in the relationship. (Also, there are only two groups, so linearity assumption will be implicitly satisfied)
+
+## Normality: The QQ plot suggests some deviation from normality, but as our sample size is huge, we can go ahead with our analysis.
+
+# Hence, now as the assumptions are satisfied, we move towards building the regression model, and try to interpret it
+
+```{r}
+print(summary(model_ewb))
+```
+
+Hence, we get the intercept as -1.9784 and the group coefficient as 0.4077.
+The coefficient of the group variable can be interpreted as the estimated change in mean of the difference in emotional well being score due to the treatment group assignment is 0.4077 i.e. the emotional well-being score increases on an average by 0.4077 due to the accupuncture treatment. 
+But, this coefficient is not statistically significant as the p-value is considerably large, here 0.805.
+Hence, we can say that there is no evidence of an effect of acupuncture treatment on the difference of emotional well-being score.
+
+## Hence, we didn't find any evidence for the effect of acupuncture on the difference in the emotional well being score
+
+# Hence, we only found evidence of effect of accupuncture treatment on the difference in headeache severity score. So, we will go ahead with it only.
+
+
+
+# Now, we adjust for some of the potential confounding variables
+
+# These variables are the ones, which are used for randomization by minimization
+
+# We first try to make a model by involving all the potential confounding variables in addition to the group variable
+```{r}
+model1 <- summary(lm((pk5-pk1)~group + age + sex + chronicity + acupuncturist + prophmqs1 + migraine + pk1, data = df))
+perc_change <- abs((model$coefficients[[2]] - model1$coefficients[[2]])*100/model$coefficients[[2]])
+print(paste("Percent change",perc_change))
+```
+The coefficient of the group changes by more than 10 percent by adjusting for the potential confounders. Hence, according to the thumb rule of confounding, these included variables show evidence of confounding.
+
+## Hence, as we found evidence for confounding variables, further on, we will incorporate these variables as confounders for analysis.
+
