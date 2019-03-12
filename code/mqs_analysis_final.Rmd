@@ -151,36 +151,6 @@ From the Residuals vs. fitted values plot, we see that linearity and constant va
 - We have not explored how confounders could affect the mediation analysis. There are complex methods to test mediation with control variables [5].
 - There could be multiple variables which could be potential mediators like Pain medication MQS score, Number of General Practitioner Visits etc. which have not been considered in this analysis. There exists complex procedures to perform meidation analysis for multiple potential mediators [6], which can be included in the future research.
 
-#### Without counfounders test:
-```{r}
-# counfounders = c(age, sex, chronicity, acupuncturist, prophmqs1, migraine,
-# pk1)
-
-# Checking zero-order relationship: X -> Y
-print("Checking zero-order relationship: X -> Y")
-s1_model = lm(delta5 ~ group, data=data)
-summary(s1_model)
-
-# Checking zero-order relationship: X -> M
-print("Checking zero-order relationship: X -> M")
-s2_model = lm(prophmqs5 ~ group, data=data)
-summary(s2_model)
-
-# Checking zero-order relationship: M -> Y
-print("Checking zero-order relationship: M -> Y")
-s3_model = lm(delta5 ~ prophmqs5, data=data)
-summary(s3_model)
-
-# Checking effect of M controlling for X
-print("Checking effect of M controlling for X")
-s4_model = lm(delta5 ~ prophmqs5 + group, data=data)
-summary(s4_model)
-
-# Checking Moderation effect caused by M (interaction effect between X and M)
-print("Checking Moderation effect caused by M (interaction effect between X and M)")
-moderator_model = lm(delta5 ~ group*prophmqs5, data=data)
-summary(moderator_model)
-```
 
 #### References:
 [4] Web Article - [http://web.pdx.edu/~newsomj/semclass/ho_mediation.pdf](http://web.pdx.edu/~newsomj/semclass/ho_mediation.pdf)
