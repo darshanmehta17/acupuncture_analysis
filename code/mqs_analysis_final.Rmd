@@ -160,7 +160,7 @@ coeftest(s3_model, vcov. = vcovHC(s3_model))
 
 #### Limitation:
 - We have not explored how confounders could affect the mediation analysis. There are complex methods to test mediation with control variables [2].
-- There could be other variables which act as potential mediators or moderators such as pain medication MQS score, number of visits to the general practitioner, etc. which have not been considered in this analysis. There exists complex procedures to perform meidation analysis for multiple potential mediators [3], which can be included in the future research.
+- There could be other variables which act as potential mediators or moderators such as pain medication MQS score, number of visits to the general practitioner, etc. which have not been considered in this analysis. There exists complex procedures to perform mediation analysis for multiple potential mediators [3], which can be included in the future research.
 - For some of the tests, the linearity assumption was not perfectly met. It could be that there exists a non-linear relationship between those variables, but due to the lack of time and abundance of possible mean-variance relationships, we did not make an attempt to account for that aspect. We are aware that this could affect the power and interpretation of our results and leave this for future work.
 
 
