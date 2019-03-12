@@ -30,7 +30,7 @@ Firstly, we read the data into a dataframe and extract the target variables and 
 
 ```{r}
 df <- read.csv("C:\\Users\\Yash R Parikh\\OneDrive\\UWash\\Quarter 2\\DATA 557 - BioStat\\Project\\clean_data.csv")
-target <- df$pk5 - df$pk1
+target <- df$delta5
 group1 <- df$group
 ```
 
@@ -91,7 +91,6 @@ print(summary(model_ewb))
 ```
 
 Hence, we get the intercept as -1.9784 and the group coefficient as 0.4077.
-The coefficient of the group variable can be interpreted as the estimated change in mean of the difference in emotional well being score due to the treatment group assignment is 0.4077 i.e. the emotional well-being score increases on an average by 0.4077 due to the accupuncture treatment. 
 But, this coefficient is not statistically significant as the p-value is considerably large, here 0.805.
 Hence, we can say that there is no evidence of an effect of acupuncture treatment on the difference of emotional well-being score.
 
@@ -107,7 +106,7 @@ Hence, we can say that there is no evidence of an effect of acupuncture treatmen
 
 # We first try to make a model by involving all the potential confounding variables in addition to the group variable
 ```{r}
-model1 <- summary(lm((pk5-pk1)~group + age + sex + chronicity + acupuncturist + prophmqs1 + migraine + pk1, data = df))
+model1 <- summary(lm(delta5~group + age + sex + chronicity + prophmqs1 + migraine + pk1, data = df))
 perc_change <- abs((model$coefficients[[2]] - model1$coefficients[[2]])*100/model$coefficients[[2]])
 print(paste("Percent change",perc_change))
 ```
