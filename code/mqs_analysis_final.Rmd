@@ -57,7 +57,7 @@ path c: X -> Y
 6. Step 6: Conduct a regression analysis with X predicting Y including an interaction term for X:M, $Y = B_0 + B_1X + B_2M + B_3(X)(M) + e$. We test the Null Hypothesis that there is no interaction effect X:M i.e., $H_0: B_3= 0$. This determines the evidence for existence of moderation (interaction) effect of M on X.
 
 ```{r MQS Analysis with confounders}
-# counfounders = c(age, sex, chronicity, acupuncturist, prophmqs1, migraine, pk1)
+# counfounders = c(age, sex, chronicity, prophmqs1, migraine, pk1)
 
 # Checking zero-order relationship: X -> Y
 print("Checking zero-order relationship: X -> Y")
@@ -94,14 +94,7 @@ moderator_model = lm(delta5 ~ group*prophmqs5 + age + sex + chronicity +
 summary(moderator_model)
 ```
 
-Results and Discussion:
-# This can be ignored. Old results, just kept for reference.
-1. Mediation effect: It is unlikely for M to have a mediation effect as there is no zero-order significant effect of M on Y. Also, when controlled for X, the effect of M on Y is not significant.
-
-2. Moderator effect: Since we found that M cannot be a mediator, we now consider if M is a Moderator. Considering the interaction model, we see that there is no significant interaction effect between X and M. Therefore, there is not enough evidence to reject the hypothesis that the effect of X on Y doesn't change for unit difference in M.
-
-
-However, before we pass the judgement, we need to make sure that the assumptions of the test used above have been met. More specifically, we need to test the following for each of the models in the above snippet:
+Before we pass begin to interpret the results of these tests, we need to make sure that the assumptions of the tests used have been met. More specifically, we need to test the following for each of the models in the above snippet:
 
 1. Independence
 2. Linearity
@@ -146,6 +139,24 @@ check_assumptions(moderator_model)
 ```
 
 From the Residuals vs. fitted values plot, we see that linearity and constant variance assumption is met. From the Q-Q plot, we see very minor deviations from normality around the tails which isn't sufficient evidence to rule out normality and since the sample size seems large enough (301), we can say that normality assumption is met. 
+
+Since there are two tests for which the constant variance assumption was not met, we use robust SEs and reconduct the tests.
+
+```{r robust SEs}
+# Checking zero-order relationship: X -> M
+print("Checking zero-order relationship: X -> M")
+coeftest(s2_model, vcov. = vcovHC(s2_model))
+
+# Checking zero-order relationship: M -> Y
+print("Checking zero-order relationship: M -> Y")
+coeftest(s3_model, vcov. = vcovHC(s3_model))
+```
+
+
+#### Results and Discussion:
+1. Mediation effect: While there is significant evidence of X on the value of M and X on the value of Y after adjusting for all the confounders, it is unlikely for M to have a mediation effect as there is no zero-order significant effect of M on Y. Also, when controlled for X, the effect of M on Y is not significant.
+
+2. Moderator effect: Since we found that M cannot be a mediator, we now check if M is a moderator. Considering the interaction model, we see that there is no significant interaction effect between X and M. Therefore, there is not enough evidence to reject the hypothesis that the effect of X on Y doesn't change for unit difference in M.
 
 #### Limitation:
 - We have not explored how confounders could affect the mediation analysis. There are complex methods to test mediation with control variables [5].
