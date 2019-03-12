@@ -6,6 +6,7 @@ output: pdf_document
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+library(sandwich)
 ```
 
 ```{r}
@@ -13,10 +14,10 @@ data = read.csv("../data/data_filtered.csv")
 ```
 
 #### Problem Description:
-We have found Acupuncture treatment to have a significant effect on the Headache Severiry Score (HSS) score change with adjustment to the confounders. From the study, both the control and treatment group were given usual headache prevention medicine (Prophylactic Medication measured by MQS score), and the treatment group were given Acupunture treatments as well. Therefore, we idetify the Prophylactic Medication MQS score to be a potential Mediator or Moderator. Therefore, we shall test for any signifiance Mediation (Full or Partial). If we do not find enough evidence for mediation, we shall test for Moderation (interaction) effect.
+We found acupuncture treatment to have a significant effect on the change in Headache Severity Score (HSS) score after adjustment of the confounders. From the study, both the control and treatment group were given a commonly used headache prevention medicine (Prophylactic Medication - measured using MQS score). The treatment group was additionally given acupunture treatments. We suspect that the Prophylactic medication could act as a potential mediator or moderator. Therefore, we test for significant mediation (full or partial). If we do not find enough evidence for mediation, we shall test for moderation (interaction) effect.
 
 #### Statistical Analysis:
-We consider the treatment group assignment as primary predictor (X). This is referred as 'Acupunture' since it is a binary treatment group assignment. Our primary ourcome variable is the change in the HSS after 12-months, i.e., difference between 12-months and baseline (Y). The HSS at 12-months is an aggregate of everyday HSS entered for four weeks by patients after 12-months. At the same time, the patients in both control and treatment group were also taking Prophylactic medication (the usual standard medication given for prevention of headache) quantified by the MQS score (M) referred as MEDS from now onwards.
+We consider the treatment group assignment as primary predictor (X). This is referred as 'Acupunture' since it is a binary treatment group assignment. Our primary ourcome variable is the change in the HSS (Y) after 12-months, i.e., difference between 12-months and baseline. The HSS at 12-months is an aggregate of everyday HSS entered for four weeks by patients after 12-months. During this time, the patients in both, control and treatment group, continued to take the Prophylactic medication quantified by the MQS score (M) referred as MEDS from now onwards.
 
 We need to determine whether MEDS mediated or moderated the effect of Acupunture on the change in the HSS after 12-months. The significance level (alpha) is set at 0.05 for this analysis.
 
@@ -50,16 +51,16 @@ path c: X -> Y
 
 - In Step 4, if the effect of M (path b) is not significant after controlling for X, then Mediation effect is not likely. Hence, proceed to Step 6 to test for Moderation effect.
 
-5. Step 5: Determine the significance of indirect effect using Sodel Product of Coefficients Approach - $B_i = (B_2)(B_1)$. Here $B_2$ is taken from model from Step 4, and $B_1$ is taken from model from Step 2. Determine the significance using Bootstrap method - bootstrap sampling is done on patient ids, and corresponding values for X, M and Y are collected and $B_i$ is calculated for 5000 bootstrap samples. Bootstrap standard error ($SE(B_i)$) is calculated by taking standard deviation of collected array of $B_i$s. Then the Z statistic - $B_i/SE(B_i)$ is calculated and compared to a Normal distribution to get a p-value. If there exists statistical significance for the indirect effect, then the mediation effect can be considered statistically signifianct.
+5. Step 5: Determine the significance of indirect effect using Sobel Product of Coefficients Approach - $B_i = (B_2)(B_1)$. Here $B_2$ is taken from model from Step 4, and $B_1$ is taken from model from Step 2. Determine the significance using Bootstrap method - bootstrap sampling is done on patient ids, and corresponding values for X, M and Y are collected and $B_i$ is calculated for 5000 bootstrap samples. Bootstrap standard error ($SE(B_i)$) is calculated by taking standard deviation of collected array of $B_i$s. Then the Z statistic - $B_i/SE(B_i)$ is calculated and compared to a Normal distribution to get a p-value. If there exists statistical significance for the indirect effect, then the mediation effect can be considered statistically signifianct. (#TODO: Can we do bootstrap in one place and robust SE in another? Or should we use the same approach in both the places?)
 
 6. Step 6: Conduct a regression analysis with X predicting Y including an interaction term for X:M, $Y = B_0 + B_1X + B_2M + B_3(X)(M) + e$. We test the Null Hypothesis that there is no interaction effect X:M i.e., $H_0: B_3= 0$. This determines the evidence for existence of moderation (interaction) effect of M on X.
 
 ```{r}
-counfounders = c(age, sex, chronicity, acupuncturist, prophmqs1, migraine, pk1)
+# counfounders = c(age, sex, chronicity, acupuncturist, prophmqs1, migraine, pk1)
 
 # Checking zero-order relationship: X -> Y
 print("Checking zero-order relationship: X -> Y")
-s1_model = lm(delta5 ~ group + age + sex + chronicity + acupuncturist + prophmqs1 + migraine + pk1, data=data)
+s1_model = lm(delta5 ~ group + age + sex + chronicity + acupuncturist + prophmqs1 + migraine + pk1, data=data, )
 summary(s1_model)
 
 # Checking zero-order relationship: X -> M
@@ -89,13 +90,61 @@ Results and Discussion:
 
 2. Moderator effect: Since we found that M cannot be a mediator, we now consider if M is a Moderator. Considering the interaction model, we see that there is no significant interaction effect between X and M. Therefore, there is not enough evidence to reject the hypothesis that the effect of X on Y doesn't change for unit difference in M.
 
+
+However, before we pass the judgement, we need to make sure that the assumptions of the test used above have been met. More specifically, we need to test the following for each of the models in the above snippet:
+
+1. Independence
+2. Linearity
+3. Constant variance of the error terms
+4. Normality or Large Sample size
+
+While independence can only be tested from background knowledge of the data collection and experiment design mechanism, for the sake of this analysis, we assume that independence holds and test for the rest.
+
+```{r}
+check_assumptions = function(model){
+  par(mfrow = c(1,2))
+  plot(model, which=c(1:2))
+}
+```
+
+```{r checkAssumptions: X->Y with confounders}
+check_assumptions(s1_model)
+```
+
+From the Residuals vs. fitted values plot, we see that linearity and constant variance assumption is met. From the Q-Q plot, we see very minor deviations from normality around the tails which isn't sufficient evidence to rule out normality and since the sample size seems large enough (301), we can say that normality assumption is met. 
+
+```{r checkAssumptions: X->M with confounders}
+check_assumptions(s2_model)
+```
+
+From the Residuals vs. fitted values plot, we see that linearity and constant variance assumption is met. From the Q-Q plot, we see very minor deviations from normality around the tails which isn't sufficient evidence to rule out normality and since the sample size seems large enough (301), we can say that normality assumption is met. 
+
+```{r checkAssumptions: M->Y with confounders}
+check_assumptions(s3_model)
+```
+
+From the Residuals vs. fitted values plot, we see that linearity and constant variance assumption is met. From the Q-Q plot, we see very minor deviations from normality around the tails which isn't sufficient evidence to rule out normality and since the sample size seems large enough (301), we can say that normality assumption is met. 
+
+```{r checkAssumptions: M->Y (X controlled) with confounders}
+check_assumptions(s4_model)
+```
+
+From the Residuals vs. fitted values plot, we see that linearity and constant variance assumption is met. From the Q-Q plot, we see very minor deviations from normality around the tails which isn't sufficient evidence to rule out normality and since the sample size seems large enough (301), we can say that normality assumption is met. 
+
+```{r checkAssumptions: X*M->Y with confounders}
+check_assumptions(moderator_model)
+```
+
+From the Residuals vs. fitted values plot, we see that linearity and constant variance assumption is met. From the Q-Q plot, we see very minor deviations from normality around the tails which isn't sufficient evidence to rule out normality and since the sample size seems large enough (301), we can say that normality assumption is met. 
+
 #### Limitation:
 - We have not explored how confounders could affect the mediation analysis. There are complex methods to test mediation with control variables [5].
 - There could be multiple variables which could be potential mediators like Pain medication MQS score, Number of General Practitioner Visits etc. which have not been considered in this analysis. There exists complex procedures to perform meidation analysis for multiple potential mediators [6], which can be included in the future research.
 
 #### Without counfounders test:
 ```{r}
-counfounders = c(age, sex, chronicity, acupuncturist, prophmqs1, migraine, pk1)
+# counfounders = c(age, sex, chronicity, acupuncturist, prophmqs1, migraine,
+# pk1)
 
 # Checking zero-order relationship: X -> Y
 print("Checking zero-order relationship: X -> Y")
@@ -119,7 +168,7 @@ summary(s4_model)
 
 # Checking Moderation effect caused by M (interaction effect between X and M)
 print("Checking Moderation effect caused by M (interaction effect between X and M)")
-moderator_model = lm(delta5 ~ group*totalmeds5, data=data)
+moderator_model = lm(delta5 ~ group*prophmqs5, data=data)
 summary(moderator_model)
 ```
 

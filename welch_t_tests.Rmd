@@ -1,0 +1,56 @@
+---
+title: "Untitled"
+author: "Yash Kale, Edwin Mathew"
+date: "March 11, 2019"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+### DROP OUT ANALYSIS
+Problem Statement: For the drop out bias analysis, we want to check if the change in headache severity scores for the people (from the treatment group only) who dropped out at the end of 3 months is the same as the change in headache severity scores for the people(from the treatment group only) who continued for all 12 months.
+
+We want to analyse whether there was any bias involved when people dropped out of the treatment group.
+
+For this analysis, we decide to compare the delta2 values i.e the change in headache severity scores from the baseline and post the acupunture treament, of the people from the treatment group only.
+
+We proposed a welch t test to test our hypothesis, assuming normality of the distribution and the samples having unequal variances.
+
+The variables used to filter the dataset here are:
+1) group: indicates whether the person is in the treatment or control group.
+2) delta5: indicates whether a person dropped out after three months or not
+3) delta2: hypothesis to be tested on this variable
+
+
+```{r }
+dataset = read.csv('C:\\Users\\Yash Kale\\Downloads\\CausalInference-Acupuncture - Data.csv')
+
+#Taking the delta2 values for people who dropped out after 3 months
+three_months = dataset$delta2[dataset$group == 1 & is.na(dataset$delta5)]
+three_months = na.omit(three_months)
+
+#Taking the delta2 values for people who reported values throughout the 12 months
+twelve_months = dataset$delta2[dataset$group == 1 & ! is.na(dataset$delta5)]
+twelve_months = na.omit(twelve_months)
+
+#Performing the welch t-test to test our hypothesis.
+t.test(three_months, twelve_months, var.equal = F)
+
+```
+
+
+Problem Statement: We intend to explore the duration for which the acupuncture treatments last i.e come to any correlation if there exists, whether acupuncture effects are short lived or are long term.
+
+For this analysis, we decide to compare the delta2 values i.e the change in headache severity scores from the baseline and post the acupunture treament, and delta5 values i.e. the change in headache severity scores from the baseline and after 12 months of reporting, of the people from the treatment group only and those who continued till 12 months.
+
+We proposed a simple paired t test to test our hypothesis, assuming normality of the distribution and the samples having unequal variances.
+
+```{r }
+
+three_same = dataset$delta2[dataset$group == 1 & !is.na(dataset$delta5)]
+twelve_same = dataset$delta5[dataset$group == 1 & !is.na(dataset$delta5)]
+
+t.test(three_same, twelve_same, paired = T, var.equal = F)
+```
