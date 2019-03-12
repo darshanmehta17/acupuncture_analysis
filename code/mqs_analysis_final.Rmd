@@ -7,6 +7,7 @@ output: pdf_document
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 library(sandwich)
+library(lmtest)
 ```
 
 ```{r}
@@ -55,32 +56,41 @@ path c: X -> Y
 
 6. Step 6: Conduct a regression analysis with X predicting Y including an interaction term for X:M, $Y = B_0 + B_1X + B_2M + B_3(X)(M) + e$. We test the Null Hypothesis that there is no interaction effect X:M i.e., $H_0: B_3= 0$. This determines the evidence for existence of moderation (interaction) effect of M on X.
 
-```{r}
+```{r MQS Analysis with confounders}
 # counfounders = c(age, sex, chronicity, acupuncturist, prophmqs1, migraine, pk1)
 
 # Checking zero-order relationship: X -> Y
 print("Checking zero-order relationship: X -> Y")
-s1_model = lm(delta5 ~ group + age + sex + chronicity + acupuncturist + prophmqs1 + migraine + pk1, data=data, )
+s1_model = lm(delta5 ~ group + age + sex + chronicity + 
+                prophmqs1 + migraine + pk1, data=data)
 summary(s1_model)
 
 # Checking zero-order relationship: X -> M
 print("Checking zero-order relationship: X -> M")
-s2_model = lm(prophmqs5 ~ group + age + sex + chronicity + acupuncturist + prophmqs1 + migraine + pk1, data=data)
+s2_model = lm(prophmqs5 ~ group + age + sex + chronicity + 
+                prophmqs1 + migraine + 
+                pk1, data=data)
 summary(s2_model)
 
 # Checking zero-order relationship: M -> Y
 print("Checking zero-order relationship: M -> Y")
-s3_model = lm(delta5 ~ prophmqs5 + age + sex + chronicity + acupuncturist + prophmqs1 + migraine + pk1, data=data)
+s3_model = lm(delta5 ~ prophmqs5 + age + sex + chronicity + 
+                prophmqs1 + migraine + 
+                pk1, data=data)
 summary(s3_model)
 
 # Checking effect of M controlling for X
 print("Checking effect of M controlling for X")
-s4_model = lm(delta5 ~ prophmqs5 + group + age + sex + chronicity + acupuncturist + prophmqs1 + migraine + pk1, data=data)
+s4_model = lm(delta5 ~ prophmqs5 + group + age + sex + chronicity + 
+                prophmqs1 + migraine + 
+                pk1, data=data)
 summary(s4_model)
 
 # Checking Moderation effect caused by M (interaction effect between X and M)
 print("Checking Moderation effect caused by M (interaction effect between X and M)")
-moderator_model = lm(delta5 ~ group*prophmqs5 + age + sex + chronicity + acupuncturist + prophmqs1 + migraine + pk1, data=data)
+moderator_model = lm(delta5 ~ group*prophmqs5 + age + sex + chronicity + 
+                       prophmqs1 + migraine + 
+                       pk1, data=data)
 summary(moderator_model)
 ```
 
@@ -117,13 +127,13 @@ From the Residuals vs. fitted values plot, we see that linearity and constant va
 check_assumptions(s2_model)
 ```
 
-From the Residuals vs. fitted values plot, we see that linearity and constant variance assumption is met. From the Q-Q plot, we see very minor deviations from normality around the tails which isn't sufficient evidence to rule out normality and since the sample size seems large enough (301), we can say that normality assumption is met. 
+From the Residuals vs. fitted values plot, we see that linearity and constant variance assumption is not met. From the Q-Q plot, we see major deviations from normality. So we can say that none of the assumptions for this test are met. Since the sample size is large, we don't need to satisfy normality (due to CLT). We'll have to use robust SEs to account for non-constant variance.
 
 ```{r checkAssumptions: M->Y with confounders}
 check_assumptions(s3_model)
 ```
 
-From the Residuals vs. fitted values plot, we see that linearity and constant variance assumption is met. From the Q-Q plot, we see very minor deviations from normality around the tails which isn't sufficient evidence to rule out normality and since the sample size seems large enough (301), we can say that normality assumption is met. 
+From the Residuals vs. fitted values plot, we notice minor departures from linearity but the constant variance assumption is clearly not met. From the Q-Q plot, we see very minor deviations from normality around the tails which isn't sufficient evidence to rule out normality and since the sample size seems large enough (301), we can say that normality assumption is met. We'll have to use robust SEs to account for non-constant variance.
 
 ```{r checkAssumptions: M->Y (X controlled) with confounders}
 check_assumptions(s4_model)
