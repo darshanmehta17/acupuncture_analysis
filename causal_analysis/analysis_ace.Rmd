@@ -1,0 +1,29 @@
+---
+title: "Average Causal Effect Analysis"
+author: "Darshan Mehta"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r}
+# read the filtered data
+data = read.csv('../data/data_filtered.csv')
+```
+
+We first use the Neyman's formula for calculating the ACE(X->Y) without accounting for any potential confounders. Here the variable Y is the delta5 column denoting the difference in headache severity score between baseline and 12 months and the variable X is the treatment group (binary).
+
+```{r}
+data_control = subset(data, group == 0)
+data_treatment = subset(data, group == 1)
+
+delta5_control = data_control$delta5
+delta5_treatment = data_treatment$delta5
+
+ace = mean(delta5_treatment) - mean(delta5_control)
+print(paste('ACE(X->Y):', ace))
+```
+
