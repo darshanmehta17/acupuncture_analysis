@@ -1,0 +1,35 @@
+---
+title: "Average Causal Effect Analysis"
+author: "Darshan Mehta"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r}
+# read the filtered data
+data = read.csv('../data/data_filtered.csv')
+```
+
+We first use the Neyman's formula for calculating the ACE(X->Y) without accounting for any potential confounders. Here the variable Y is the delta5 column denoting the difference in Headache Severity Score (HSS) between baseline and 12 months and the variable X is the treatment group (binary).
+
+```{r}
+data_control = subset(data, group == 0)
+data_treatment = subset(data, group == 1)
+
+delta5_control = data_control$delta5
+delta5_treatment = data_treatment$delta5
+
+ace = mean(delta5_treatment) - mean(delta5_control)
+print(paste('ACE(X->Y):', ace))
+```
+
+Now, we need to adjust for the confounders. For us to adjust for them, we would first need to find out which variables act as confounders. To do so, we first construct a PAG of the data and then create a SWIG by intervening on the treatment group assignment variable. Next we will use the backdoor formula to find the distribution of the change in HSS for each of the treatment groups and use that to calculate the new ACE.
+
+```{r}
+
+```
+
