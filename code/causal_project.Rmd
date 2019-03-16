@@ -1,0 +1,28 @@
+---
+title: "CausalProject"
+author: "Bhuvan, Darshan, Yash"
+date: "March 15, 2019"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Q1: Neyman's method to find ACE of Acupunture on HSS.
+
+```{r}
+
+```
+
+## Q2: Adjust for confounders and find ACE.
+
+## Q3: Complier analysis by IV model.
+
+## Q4: Mediation Analysis if IV model is not compliant.
+
+## Q5: Dropout Analysis: 1. baseline confounders, 2. 3-month HSS analysis.
+
+## Q6: SF-36 health status, 9-aspects Causal DAG. 1. separate 2. including X.
+
+## Q7: Causal DAG for outcome variables.
