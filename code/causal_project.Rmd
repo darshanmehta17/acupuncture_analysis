@@ -9,20 +9,335 @@ output: pdf_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
+```{r}
+library("pcalg")
+library("graph")
+library("Rgraphviz")
+library(abind)
+library(corpcor)
+library(sfsmisc)
+library(robustbase)
+library("dplyr")
+source("http://www.stat.washington.edu/tsr/s566/labs/y0y1polytopenew-rgl-col.R")
+library(rgl)
+
+plotcpdag <- "Rgraphviz" %in% print(.packages(lib.loc = .libPaths()[1]))
+```
+
+
+```{r}
+data = read.csv("../data/data_filtered.csv")
+full_data = read.csv("../data/raw_data.csv")
+
+data$delta5_binary = ifelse(data$delta5 > 0, 1, 0)
+
+alpha = 0.05
+```
+
+# EDA
+```{r}
+boxplot(data$delta5)
+summary(data$delta5)
+plot(data$delta5)
+hist(data$delta5)
+sum(data$delta5 < 0) / length(data$delta5)
+```
+
+```{r}
+# Function to get CPDAG and PAG.
+get_dags  = function(mydata, alpha) {
+  # Graphical display of correlation matrix.
+  pairs(mydata, lower.panel = NULL)
+
+  names <- attr(mydata, "names")
+  n <- nrow(mydata)
+  p <- ncol(mydata)
+  indepTest <- gaussCItest
+  suffStat <- list(C=cor(mydata), n = n)
+  
+  ## Estimate CPDAG
+  pc.fit <- pc(suffStat, indepTest=indepTest, p = p, alpha = alpha, verbose = TRUE)
+  showAmat(pc.fit)
+  showEdgeList(pc.fit, names)
+  
+  print(names)
+  
+  if (plotcpdag) {
+    plot(pc.fit, main = "Estimated CPDAG",labels=names)
+  }
+  
+  ##### Using the FCI Algorithm to estimate an ancestral graph
+  ## Estimate Partial Ancestral Graph (PAG)
+  fci.fit <- fci(suffStat, indepTest, p = p, labels=names, alpha = alpha, verbose = TRUE)
+  
+  print(fci.fit@amat)
+  
+  if (plotcpdag) {
+    dev.off()
+    plot(fci.fit)
+  }
+  
+  print(fci.fit@sepset)
+}
+```
+
+
 ## Q1: Neyman's method to find ACE of Acupunture on HSS.
 
 ```{r}
+# For delta5 continuous.
+control_data = subset(data, group==0)
+trt_data = subset(data, group==1)
 
+neyman_ace = mean(trt_data$delta5) - mean(control_data$delta5)
+var_neyman_ace = var(trt_data$delta5)/nrow(trt_data) + var.shrink(control_data$delta5)/nrow(control_data)
+
+ci_lower = neyman_ace - qnorm(1-alpha/2) * sqrt(var_neyman_ace)
+ci_upper = neyman_ace + qnorm(1-alpha/2) * sqrt(var_neyman_ace)
+
+ace_ci = c(ci_lower, ci_upper)
+
+cat("Estimate of Neyman ACE (delta5 continuous):", neyman_ace, "\n")
+cat("Estimate of Variance of ACE (delta5 continuous):", var_neyman_ace, "\n")
+cat("CI (delta5 continuous): (", ci_lower, ",", ci_upper, ")\n")
 ```
 
 ## Q2: Adjust for confounders and find ACE.
+- Include all baseline confounders and get a PAG.
+- Get a SWIG from PAG for X=x*
+- Analyse d-separations and identify minimal set of confounders.
+- Backdoor formula/Matching algorithm to find ACE.
+
+```{r}
+# For delta5 continuous:
+baseline_covariates_xy = select(data, group, age, sex, migraine, chronicity, pk1, f1, painmedspk1, prophmqs1, delta5)
+
+# Graphical display of correlation matrix.
+pairs(baseline_covariates_xy, lower.panel = NULL)
+
+names <- attr(baseline_covariates_xy, "names")
+n <- nrow(baseline_covariates_xy)
+p <- ncol(baseline_covariates_xy)
+indepTest <- gaussCItest
+suffStat <- list(C=cor(baseline_covariates_xy), n = n)
+
+## Estimate CPDAG
+pc.fit <- pc(suffStat, indepTest=indepTest, p = p, alpha = alpha, verbose = TRUE)
+showAmat(pc.fit)
+showEdgeList(pc.fit, names)
+
+print(names)
+
+if (plotcpdag) {
+  plot(pc.fit, main = "Estimated CPDAG",labels=names)
+}
+
+##### Using the FCI Algorithm to estimate an ancestral graph
+## Estimate Partial Ancestral Graph (PAG)
+fci.fit <- fci(suffStat, indepTest, p = p, labels=names, alpha = alpha, verbose = TRUE)
+
+fci.fit@amat
+
+if (plotcpdag) {
+  dev.off()
+  plot(fci.fit)
+}
+
+fci.fit@sepset
+```
+
+Since intervention is done on X=group, and our response variable is Y=delta5 (change in HSS from baseline and 12-months), when SWIG G* is written for every graph in the above PAG, we find that X=group is d-separated from Y=delta5 unconditionally. Therefore, from faithfulness assumption (is it required?), we find that X=group is independent of Y=delta5.
+
+Therefore, the ACE observed in Q1, is valid because we do not need to account for confounders using backdoor formula.
 
 ## Q3: Complier analysis by IV model.
+Binarizing the response variable (delta5), to check if headache imporved or worsened.
 
-## Q4: Mediation Analysis if IV model is not compliant.
+```{r}
+# Find Neyman ACE for delta5 binarized.
+neyman_ace = mean(trt_data$delta5_binary) - mean(control_data$delta5_binary)
+var_neyman_ace = var(trt_data$delta5_binary)/nrow(trt_data) + var(control_data$delta5_binary)/nrow(control_data)
+
+ci_lower = neyman_ace - qnorm(1-alpha/2) * sqrt(var_neyman_ace)
+ci_upper = neyman_ace + qnorm(1-alpha/2) * sqrt(var_neyman_ace)
+
+ace_ci = c(ci_lower, ci_upper)
+
+cat("Estimate of Neyman ACE (delta5 binary):", neyman_ace, "\n")
+cat("Estimate of Variance of ACE (delta5 binary):", var_neyman_ace, "\n")
+cat("CI (delta5 binary): (", ci_lower, ",", ci_upper, ")\n")
+```
+
+```{r}
+# Check SWIG for delta5 binarized.
+baseline_covariates_xy = select(data, group, age, sex, migraine, chronicity, pk1, f1, painmedspk1, prophmqs1, delta5)
+
+# Graphical display of correlation matrix.
+pairs(baseline_covariates_xy, lower.panel = NULL)
+
+names <- attr(baseline_covariates_xy, "names")
+n <- nrow(baseline_covariates_xy)
+p <- ncol(baseline_covariates_xy)
+indepTest <- gaussCItest
+suffStat <- list(C=cor(baseline_covariates_xy), n = n)
+
+## Estimate CPDAG
+pc.fit <- pc(suffStat, indepTest=indepTest, p = p, alpha = alpha, verbose = TRUE)
+showAmat(pc.fit)
+showEdgeList(pc.fit, names)
+
+print(names)
+
+if (plotcpdag) {
+  plot(pc.fit, main = "Estimated CPDAG  (delta5 continuous)",labels=names)
+}
+
+##### Using the FCI Algorithm to estimate an ancestral graph
+## Estimate Partial Ancestral Graph (PAG)
+fci.fit <- fci(suffStat, indepTest, p = p, labels=names, alpha = alpha, verbose = TRUE)
+
+fci.fit@amat
+
+if (plotcpdag) {
+  dev.off()
+  plot(fci.fit)
+}
+
+fci.fit@sepset
+```
+
+```{r}
+# IV Model: Considering delta5 binary.
+data$acuptreatments[is.na(data$acuptreatments)] = 0
+median_acuptreatments = median(data$acuptreatments, na.rm=T)
+data$complier = ifelse(data$acuptreatments >= median_acuptreatments, 1, 0)
+
+z0_data = subset(data, group==0)
+z1_data = subset(data, group==1)
+# p(y0, x0 | z0), p(y0, x1 | z0), p(y1, x0 | z0), p(y1, x1 | z0), p(y0, x0 | z1), p(y0, x1 | z1), p(y1, x0 | z1), p(y1, x1 | z1)
+iv_data = c(
+  nrow(subset(z0_data, delta5_binary==0 & complier==0)) / nrow(z0_data),
+  nrow(subset(z0_data, delta5_binary==0 & complier==1)) / nrow(z0_data),
+  nrow(subset(z0_data, delta5_binary==1 & complier==0)) / nrow(z0_data),
+  nrow(subset(z0_data, delta5_binary==1 & complier==1)) / nrow(z0_data),
+  nrow(subset(z1_data, delta5_binary==0 & complier==0)) / nrow(z1_data),
+  nrow(subset(z1_data, delta5_binary==0 & complier==1)) / nrow(z1_data),
+  nrow(subset(z1_data, delta5_binary==1 & complier==0)) / nrow(z1_data),
+  nrow(subset(z1_data, delta5_binary==1 & complier==1)) / nrow(z1_data)
+)
+
+check.iv.ineqs(iv_data)
+
+iv_data_z0 = iv_data[1:4]
+simp <- do.simplex(phi=30,theta=120,r=1000,main="IV Data; 3D view")
+do.polytope(iv_data_z0, simp)
+
+iv_data_z1 = iv_data[5:8]
+simp <- do.simplex(phi=30,theta=120,r=1000,main="IV Data; 3D view")
+do.polytope(iv_data_z1, simp)
+
+simp <- do.simplex(phi=30,theta=120,r=1000,main="IV Data; 3D view")
+do.polytope(iv_data, simp)
+
+ace.bnds <- ace.bounds(iv_data)
+cat("ACE Bounds:", ace.bnds)
+
+simp <- do.simplex(phi=-90,theta=90,r=1000,main="IV Data; 2D view")
+do.polytope(iv_data, simp)
+
+do.ace.line(ace.bnds[1], simp) # lower bound
+do.ace.line(ace.bnds[2], simp) # upper bound
+```
+
+## Q4: Mediation Analysis of Prophylactic Medication MQS score.
+
 
 ## Q5: Dropout Analysis: 1. baseline confounders, 2. 3-month HSS analysis.
+```{r}
+stay_data = subset(full_data, !is.na(full_data$delta5) & !is.na(full_data$delta2))
+dropout_data = subset(full_data, is.na(full_data$delta5) & !is.na(full_data$delta2))
+
+# Analyse the difference in baseline covariates: age, sex, migraine, chronicity, pk1, f1, painmedspk1, prophmqs1
+baseline_covariates = c("age", "sex", "migraine", "chronicity", "pk1", "f1", "painmedspk1", "prophmqs1")
+p_value_list = c()
+reject_list = c()
+
+for (i in 1:length(baseline_covariates)) {
+  v = baseline_covariates[i]
+  t_test = t.test(stay_data[v], dropout_data[v], var.equal = FALSE)
+  p_value_list[i] = t_test$p.value
+  reject_list[i] = t_test$p.value < alpha
+}
+
+summary_df = data.frame(baseline_covariate=baseline_covariates, p_value=p_value_list, reject_H0=reject_list)
+print(summary_df)
+```
+Limitation: We ignore those patients who did not give data at 3-months but had given data at 12-months. There are only 6 such patients.
+
+We observe that there is no significant difference between any of the baseline covariate values the people who dropped-out of the study after 3-months.
+
+```{r}
+# Compare the delta2 values between these two groups.
+t_test = t.test(subset(stay_data, group==1)$delta2, subset(dropout_data, group==1)$delta2, var.equal = FALSE)
+t_test$p.value
+cat("P-Value:", t_test$p.value, "\n")
+cat("Reject H0:", t_test$p.value <= 0.05, "\n")
+```
+No evidence for significant difference of delta2 between people who dropped out and those who stayed in till 12-months.
 
 ## Q6: SF-36 health status, 9-aspects Causal DAG. 1. separate 2. including X.
+```{r}
+filtered_data = subset(data, !is.na(data$pf5))
+
+# For SH-36 Health status:
+filtered_data$pf5_delta  = filtered_data$pf5  - filtered_data$pf1
+filtered_data$rlp5_delta = filtered_data$rlp5 - filtered_data$rlp1
+filtered_data$rle5_delta = filtered_data$rle5 - filtered_data$rle1
+filtered_data$ef5_delta  = filtered_data$ef5  - filtered_data$ef1
+filtered_data$ewb5_delta = filtered_data$ewb5 - filtered_data$ewb1
+filtered_data$sf5_delta  = filtered_data$sf5  - filtered_data$sf1
+filtered_data$p5_delta   = filtered_data$p5   - filtered_data$p1
+filtered_data$gen5_delta = filtered_data$gen5 - filtered_data$gen1
+filtered_data$hc5_delta  = filtered_data$hc5  - filtered_data$hc1
+
+sf36_health_aspects_x = select(filtered_data, group, pf5_delta, rlp5_delta, rle5_delta, ef5_delta, ewb5_delta, sf5_delta, p5_delta, gen5_delta, hc5_delta)
+
+# Graphical display of correlation matrix.
+pairs(sf36_health_aspects_x, lower.panel = NULL)
+
+names <- attr(sf36_health_aspects_x, "names")
+n <- nrow(sf36_health_aspects_x)
+p <- ncol(sf36_health_aspects_x)
+indepTest <- gaussCItest
+suffStat <- list(C=cor(sf36_health_aspects_x), n = n)
+
+## Estimate CPDAG
+pc.fit <- pc(suffStat, indepTest=indepTest, p = p, alpha = alpha, verbose = TRUE)
+showAmat(pc.fit)
+showEdgeList(pc.fit, names)
+
+print(names)
+
+if (plotcpdag) {
+  plot(pc.fit, main = "Estimated CPDAG (sf36_health_aspects_x continuous)",labels=names)
+}
+
+##### Using the FCI Algorithm to estimate an ancestral graph
+## Estimate Partial Ancestral Graph (PAG)
+fci.fit <- fci(suffStat, indepTest, p = p, labels=names, alpha = alpha, verbose = TRUE)
+
+fci.fit@amat
+
+if (plotcpdag) {
+  dev.off()
+  plot(fci.fit)
+}
+
+fci.fit@sepset
+```
+
+Looks like the treatment group assignment is independent of most aspects of the SF-36 health status.
+
+Emotional well-being (ewb), general health (gen) and energy fatigue (ef) are interdependent and group has a causal effect on energy fatigue.
 
 ## Q7: Causal DAG for outcome variables.
