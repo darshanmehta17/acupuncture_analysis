@@ -24,7 +24,7 @@ We need to determine whether MEDS mediated or moderated the effect of Acupunture
 
 _Note:_ For this analysis, we shall filter the data and consider only patients who completed the study till 12-months (data_filtered.csv).
 
-Mediation Effect Analysis was carried out as follows [1]:
+Mediation Effect Analysis was carried out as follows [6]:
 Please refer to the graph from Fig. 1 (#TODO: Need to be put up in report).
 X: Treatment group assignment - primary predictor
 M: Prophylactic Medication MQS score - Potential mediator
@@ -159,14 +159,14 @@ coeftest(s3_model, vcov. = vcovHC(s3_model))
 2. Moderator effect: Since we found that M cannot be a mediator, we now check if M is a moderator. Considering the interaction model, we see that there is no significant interaction effect between X and M. Therefore, there is not enough evidence to reject the hypothesis that the effect of X on Y doesn't change for unit difference in M.
 
 #### Limitation:
-- We have not explored how confounders could affect the mediation analysis. There are complex methods to test mediation with control variables [2].
-- There could be other variables which act as potential mediators or moderators such as pain medication MQS score, number of visits to the general practitioner, etc. which have not been considered in this analysis. There exists complex procedures to perform mediation analysis for multiple potential mediators [3], which can be included in the future research.
+- We have not explored how confounders could affect the mediation analysis. There are complex methods to test mediation with control variables [7].
+- There could be other variables which act as potential mediators or moderators such as pain medication MQS score, number of visits to the general practitioner, etc. which have not been considered in this analysis. There exists complex procedures to perform mediation analysis for multiple potential mediators [8], which can be included in the future research.
 - For some of the tests, the linearity assumption was not perfectly met. It could be that there exists a non-linear relationship between those variables, but due to the lack of time and abundance of possible mean-variance relationships, we did not make an attempt to account for that aspect. We are aware that this could affect the power and interpretation of our results and leave this for future work.
 
 
 #### References:
-[1] Web Article - [http://web.pdx.edu/~newsomj/semclass/ho_mediation.pdf](http://web.pdx.edu/~newsomj/semclass/ho_mediation.pdf)
+[6] T. Newsom, Jason. "Testing Mediation with Regression Analysis." Newsom: Structural Equation Modeling, Psy 523/623 Structural Equation Modeling, Spring 2018, web.pdx.edu/~newsomj/semclass/ho_mediation.pdf.
 
-[2]. MacKinnon, David P., Amanda J. Fairchild, and Matthew S. Fritz. "Mediation analysis." Annu. Rev. Psychol. 58 (2007): 593-614.
+[7]. MacKinnon, David P., Amanda J. Fairchild, and Matthew S. Fritz. "Mediation analysis." Annu. Rev. Psychol. 58 (2007): 593-614.
 
-[3]. VanderWeele, Tyler, and Stijn Vansteelandt. "Mediation analysis with multiple mediators." Epidemiologic methods 2.1 (2014): 95-115.
+[8]. VanderWeele, Tyler, and Stijn Vansteelandt. "Mediation analysis with multiple mediators." Epidemiologic methods 2.1 (2014): 95-115.
