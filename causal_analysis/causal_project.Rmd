@@ -125,7 +125,7 @@ Since intervention is done on X=group (treatment assignment group), and our resp
 
 ## Q3: Complier analysis by IV model.
 Method:
-- Binarizing the response variable (delta5), to check if headache imporved or worsened.
+- Binarizing the response variable (delta5), to check if headache improved or worsened.
 - Do the steps of IV model as in assignment 4.
 
 ```{r}
@@ -195,6 +195,7 @@ We observe that there are no confounders between X and binarized Y.
 
 
 ## Q4: Mediation Analysis of Prophylactic Medication MQS score.
+
 ```{r}
 mediation_mqs_data = select(data, group, prophmqs5, delta5)
 get_dags(mediation_mqs_data, alpha)
@@ -222,7 +223,7 @@ for (i in 1:length(baseline_covariates)) {
 summary_df = data.frame(baseline_covariate=baseline_covariates, p_value=p_value_list, reject_H0=reject_list)
 print(summary_df)
 ```
-Limitation: We ignore those patients who did not give data at 3-months but had given data at 12-months. Bute, there are only 6 such patients.
+Limitation: We ignore those patients who did not give data at 3-months but had given data at 12-months. But, there are only 6 such patients.
 
 We observe that there is no significant difference between any of the baseline covariate values the people who dropped-out of the study after 3-months. Therefore, this indicates that the bias due to dropout is unlikely.
 
