@@ -1,0 +1,263 @@
+---
+title: "Stat556: Causal Modeling Project"
+author: "Bhuvan, Darshan, Yash"
+date: "March 15, 2019"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library("pcalg")
+library("graph")
+library("Rgraphviz")
+library(abind)
+library(corpcor)
+library(sfsmisc)
+library(robustbase)
+library("dplyr")
+source("http://www.stat.washington.edu/tsr/s566/labs/y0y1polytopenew-rgl-col.R")
+library(rgl)
+
+plotcpdag <- "Rgraphviz" %in% print(.packages(lib.loc = .libPaths()[1]))
+```
+
+
+```{r}
+data = read.csv("../data/data_filtered.csv")
+full_data = read.csv("../data/raw_data.csv")
+
+alpha = 0.05
+```
+
+# EDA
+```{r}
+boxplot(data$delta5)
+summary(data$delta5)
+plot(data$delta5)
+hist(data$delta5)
+sum(data$delta5 < 0) / length(data$delta5)
+```
+
+```{r}
+# Function for Neyman's ACE analysis.
+get_neyman_ace = function(trt_data, control_data, alpha) {
+  neyman_ace = mean(trt_data) - mean(control_data)
+  var_neyman_ace = var(trt_data)/length(trt_data) + var(control_data)/length(control_data)
+
+  ci_lower = neyman_ace - qnorm(1-alpha/2) * sqrt(var_neyman_ace)
+  ci_upper = neyman_ace + qnorm(1-alpha/2) * sqrt(var_neyman_ace)
+  
+  ace_ci = c(ci_lower, ci_upper)
+  
+  cat("Estimate of Neyman ACE:", neyman_ace, "\n")
+  cat("Estimate of Variance of ACE:", var_neyman_ace, "\n")
+  cat("Confidence Interval: (", ci_lower, ",", ci_upper, ")\n")
+}
+
+# Function to get CPDAG and PAG.
+get_dags  = function(mydata, alpha) {
+  # Graphical display of correlation matrix.
+  pairs(mydata, lower.panel = NULL)
+
+  names <- attr(mydata, "names")
+  n <- nrow(mydata)
+  p <- ncol(mydata)
+  indepTest <- gaussCItest
+  suffStat <- list(C=cor(mydata), n = n)
+  
+  ## Estimate CPDAG
+  pc.fit <- pc(suffStat, indepTest=indepTest, p = p, alpha = alpha, verbose = TRUE)
+  showAmat(pc.fit)
+  showEdgeList(pc.fit, names)
+  
+  print(names)
+  
+  if (plotcpdag) {
+    plot(pc.fit, main = "Estimated CPDAG",labels=names)
+  }
+  
+  ##### Using the FCI Algorithm to estimate an ancestral graph
+  ## Estimate Partial Ancestral Graph (PAG)
+  fci.fit <- fci(suffStat, indepTest, p = p, labels=names, alpha = alpha, verbose = TRUE)
+  
+  print(fci.fit@amat)
+  
+  if (plotcpdag) {
+    dev.off()
+    plot(fci.fit)
+  }
+  
+  print(fci.fit@sepset)
+}
+```
+
+
+## Q1: Neyman's method to find ACE of Acupunture on HSS.
+
+```{r}
+# For delta5 continuous.
+control_data = subset(data, group==0)
+trt_data = subset(data, group==1)
+get_neyman_ace(trt_data$delta5, control_data$delta5, alpha=alpha)
+```
+
+Method: Average Causal Effect (ACE) was estimated using Neyman's ACE formula [formula][cite]. The estimate of variance of ACE was calculated using Neyman's method [formula]. The 95% confidence interval (since significance level alpha is set to 0.05) for ACE was calculated by computing Z-statistic. This tests for Null Hypothesis that the ACE is zero.
+
+Results: ACE is positive and the 95% confidence interval does not contain zero, implying that there is statistically significant positive ACE of acupuncture on change in the headache severity score from baseline to 12-months (delta5). Therefore, we can reject the null hypothesis that ACE is zero.
+
+## Q2: Adjust for confounders and find ACE.
+Method:
+- Include all baseline confounders and get a PAG.
+- Get a SWIG from PAG for X=x*
+- Analyse d-separations and identify minimal set of confounders.
+- If there are confounders, use backdoor formula/Matching algorithm to find ACE. Otherwise, the ACE calculated by Neyman's method is valid ACE.
+
+```{r}
+# For delta5 continuous:
+baseline_covariates_xy = select(data, group, age, sex, migraine, chronicity, pk1, f1, painmedspk1, prophmqs1, delta5)
+get_dags(baseline_covariates_xy, alpha)
+```
+
+Since intervention is done on X=group (treatment assignment group), and our response variable is Y=delta5 (change in HSS from baseline and 12-months), when SWIG G* is written for every graph in the above PAG, we find that X=group is d-separated from Y=delta5 unconditionally. Therefore, from faithfulness assumption (is it required?), we find that X=group is independent of Y=delta5. Therefore, the ACE observed by Neyman's method is valid.
+
+## Q3: Complier analysis by IV model.
+Method:
+- Binarizing the response variable (delta5), to check if headache imporved or worsened.
+- Do the steps of IV model as in assignment 4.
+
+```{r}
+# Binarizing delta5.
+data$delta5_binary = ifelse(data$delta5 > 0, 1, 0)
+
+# IV Model: Considering delta5 binary.
+data$acuptreatments[is.na(data$acuptreatments)] = 0
+median_acuptreatments = median(data$acuptreatments, na.rm=T)
+data$complier = ifelse(data$acuptreatments >= median_acuptreatments, 1, 0)
+
+z0_data = subset(data, group==0)
+z1_data = subset(data, group==1)
+# p(y0, x0 | z0), p(y0, x1 | z0), p(y1, x0 | z0), p(y1, x1 | z0), p(y0, x0 | z1), p(y0, x1 | z1), p(y1, x0 | z1), p(y1, x1 | z1)
+iv_data = c(
+  nrow(subset(z0_data, delta5_binary==0 & complier==0)) / nrow(z0_data), # p(y0, x0 | z0)
+  nrow(subset(z0_data, delta5_binary==0 & complier==1)) / nrow(z0_data), # p(y0, x1 | z0)
+  nrow(subset(z0_data, delta5_binary==1 & complier==0)) / nrow(z0_data), # p(y1, x0 | z0)
+  nrow(subset(z0_data, delta5_binary==1 & complier==1)) / nrow(z0_data), # p(y1, x1 | z0)
+  nrow(subset(z1_data, delta5_binary==0 & complier==0)) / nrow(z1_data), # p(y0, x0 | z1)
+  nrow(subset(z1_data, delta5_binary==0 & complier==1)) / nrow(z1_data), # p(y0, x1 | z1)
+  nrow(subset(z1_data, delta5_binary==1 & complier==0)) / nrow(z1_data), # p(y1, x0 | z1)
+  nrow(subset(z1_data, delta5_binary==1 & complier==1)) / nrow(z1_data)  # p(y1, x1 | z1)
+)
+
+check.iv.ineqs(iv_data)
+
+iv_data_z0 = iv_data[1:4]
+simp <- do.simplex(phi=30,theta=120,r=1000,main="IV Data; 3D view")
+do.polytope(iv_data_z0, simp)
+
+iv_data_z1 = iv_data[5:8]
+simp <- do.simplex(phi=30,theta=120,r=1000,main="IV Data; 3D view")
+do.polytope(iv_data_z1, simp)
+
+simp <- do.simplex(phi=30,theta=120,r=1000,main="IV Data; 3D view")
+do.polytope(iv_data, simp)
+
+ace.bnds <- ace.bounds(iv_data)
+cat("ACE Bounds:", ace.bnds)
+
+simp <- do.simplex(phi=-90,theta=90,r=1000,main="IV Data; 2D view")
+do.polytope(iv_data, simp)
+
+do.ace.line(ace.bnds[1], simp) # lower bound
+do.ace.line(ace.bnds[2], simp) # upper bound
+```
+
+From the IV model we observe that the ACE bounds are (0.06583851, 0.1093168). Note that these are not confidence intervals. These bounds are for binarized Y but not for absolute Y. This indicates that ACE tends to be positive even in the IV model.
+
+```{r}
+# Find Neyman ACE for delta5 binarized.
+control_data = subset(data, group==0)
+trt_data = subset(data, group==1)
+get_neyman_ace(trt_data$delta5_binary, control_data$delta5_binary, alpha=alpha)
+```
+
+We find a slightly positive ACE on the binarized change in HSS using Neyman's method as well. However, We find that 0 is present in the 95% confidence interval of ACE indicating that, it is not statistically significant to rule out that ACE is zero.
+
+```{r}
+# Check SWIG for delta5 binarized.
+baseline_covariates_xy_binary = select(data, group, age, sex, migraine, chronicity, pk1, f1, painmedspk1, prophmqs1, delta5_binary)
+get_dags(baseline_covariates_xy_binary, alpha)
+```
+
+We observe that there are no confounders between X and binarized Y.
+
+
+## Q4: Mediation Analysis of Prophylactic Medication MQS score.
+```{r}
+mediation_mqs_data = select(data, group, prophmqs5, delta5)
+get_dags(mediation_mqs_data, alpha)
+```
+
+From the SWIG that follows (for all the DAGs that the PAG represents), we find that delta5 is d-sep from prophmqs5, suggesting that mediation effect is unlikely.
+
+## Q5: Dropout Analysis: 1. baseline confounders, 2. 3-month HSS analysis.
+```{r}
+stay_data = subset(full_data, !is.na(full_data$delta5) & !is.na(full_data$delta2))
+dropout_data = subset(full_data, is.na(full_data$delta5) & !is.na(full_data$delta2))
+
+# Analyse the difference in baseline covariates: age, sex, migraine, chronicity, pk1, f1, painmedspk1, prophmqs1
+baseline_covariates = c("age", "sex", "migraine", "chronicity", "pk1", "f1", "painmedspk1", "prophmqs1")
+p_value_list = c()
+reject_list = c()
+
+for (i in 1:length(baseline_covariates)) {
+  v = baseline_covariates[i]
+  t_test = t.test(stay_data[v], dropout_data[v], var.equal = FALSE)
+  p_value_list[i] = t_test$p.value
+  reject_list[i] = t_test$p.value < alpha
+}
+
+summary_df = data.frame(baseline_covariate=baseline_covariates, p_value=p_value_list, reject_H0=reject_list)
+print(summary_df)
+```
+Limitation: We ignore those patients who did not give data at 3-months but had given data at 12-months. Bute, there are only 6 such patients.
+
+We observe that there is no significant difference between any of the baseline covariate values the people who dropped-out of the study after 3-months. Therefore, this indicates that the bias due to dropout is unlikely.
+
+```{r}
+# Compare the delta2 values between these two groups.
+t_test = t.test(subset(stay_data, group==1)$delta2, subset(dropout_data, group==1)$delta2, var.equal = FALSE)
+t_test$p.value
+cat("P-Value:", t_test$p.value, "\n")
+cat("Reject H0:", t_test$p.value <= 0.05, "\n")
+```
+No evidence for significant difference of delta2 between people who dropped out and those who stayed in till 12-months. This gives additional evidence that the bias due to dropout is unlikely.
+
+## Q6: SF-36 health status, 9-aspects Causal DAG. 1. separate 2. including X.
+```{r}
+filtered_data = subset(data, !is.na(data$pf5))
+
+# For SH-36 Health status:
+filtered_data$pf5_delta  = filtered_data$pf5  - filtered_data$pf1
+filtered_data$rlp5_delta = filtered_data$rlp5 - filtered_data$rlp1
+filtered_data$rle5_delta = filtered_data$rle5 - filtered_data$rle1
+filtered_data$ef5_delta  = filtered_data$ef5  - filtered_data$ef1
+filtered_data$ewb5_delta = filtered_data$ewb5 - filtered_data$ewb1
+filtered_data$sf5_delta  = filtered_data$sf5  - filtered_data$sf1
+filtered_data$p5_delta   = filtered_data$p5   - filtered_data$p1
+filtered_data$gen5_delta = filtered_data$gen5 - filtered_data$gen1
+filtered_data$hc5_delta  = filtered_data$hc5  - filtered_data$hc1
+
+sf36_health_aspects_x = select(filtered_data, group, pf5_delta, rlp5_delta, rle5_delta, ef5_delta, ewb5_delta, sf5_delta, p5_delta, gen5_delta, hc5_delta)
+
+get_dags(sf36_health_aspects_x, alpha)
+```
+
+Looks like the treatment group assignment is independent of most aspects of the SF-36 health status.
+
+Emotional well-being (ewb), general health (gen) and energy fatigue (ef) are interdependent and group has a causal effect on energy fatigue.
+
+## Q7: Causal DAG for outcome variables.
+This analysis would be future work.
