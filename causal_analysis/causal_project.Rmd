@@ -280,6 +280,26 @@ Limitation: We ignore those patients who did not give data at 3-months but had g
 We observe that there is no significant difference between any of the baseline covariate values the people who dropped-out of the study after 3-months. Therefore, this indicates that the bias due to dropout is unlikely.
 
 ```{r}
+stay_data = subset(full_data, !is.na(full_data$delta5) & !is.na(full_data$delta2) & group == 1)
+dropout_data = subset(full_data, is.na(full_data$delta5) & !is.na(full_data$delta2) & group == 1)
+
+# Analyse the difference in baseline covariates: age, sex, migraine, chronicity, pk1, f1, painmedspk1, prophmqs1
+baseline_covariates = c("age", "sex", "migraine", "chronicity", "pk1", "f1", "painmedspk1", "prophmqs1")
+p_value_list = c()
+reject_list = c()
+
+for (i in 1:length(baseline_covariates)) {
+  v = baseline_covariates[i]
+  t_test = t.test(stay_data[v], dropout_data[v], var.equal = FALSE)
+  p_value_list[i] = t_test$p.value
+  reject_list[i] = t_test$p.value < alpha
+}
+
+summary_df = data.frame(baseline_covariate=baseline_covariates, p_value=p_value_list, reject_H0=reject_list)
+print(summary_df)
+```
+
+```{r}
 # Compare the delta2 values between these two groups.
 t_test = t.test(subset(stay_data, group==1)$delta2, subset(dropout_data, group==1)$delta2, var.equal = FALSE)
 t_test$p.value
