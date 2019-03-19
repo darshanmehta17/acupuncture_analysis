@@ -165,6 +165,7 @@ simp <- do.simplex(phi=30,theta=120,r=1000,main="IV Data; 3D view")
 do.polytope(iv_data, simp)
 
 ace.bnds <- ace.bounds(iv_data)
+empirical.ace.bounds = ace.bnds
 cat("ACE Bounds:", ace.bnds)
 
 simp <- do.simplex(phi=-90,theta=90,r=1000,main="IV Data; 2D view")
@@ -222,7 +223,7 @@ dens.ace.upper <- density(ace.bnds.mydata[,2])
 par(mfrow=c(1,1))
 plot(dens.ace.upper,xlab="ACE(X -> Y)", main="Posteriors on bounds for ACE(X->Y).",xlim=c(-1,1),lty=1,col="green",type="l")
 points(dens.ace.lower,col="red",type="l")
-abline(v= empirical.ace.bounds, lty=3,lwd=1.5,col="blue")
+abline(v=empirical.ace.bounds, lty=3,lwd=1.5,col="blue")
 abline(h=0, lty=1,col="black")
 ```
 

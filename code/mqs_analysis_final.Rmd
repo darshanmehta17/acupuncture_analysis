@@ -143,6 +143,10 @@ From the Residuals vs. fitted values plot, we see that linearity and constant va
 Since there are two tests for which the constant variance assumption was not met, we use robust SEs and reconduct the tests.
 
 ```{r robust SEs}
+# Checking zero-order relationship: X -> Y
+print("Checking zero-order relationship: X -> Y")
+coeftest(s1_model, vcov. = vcovHC(s1_model))
+
 # Checking zero-order relationship: X -> M
 print("Checking zero-order relationship: X -> M")
 coeftest(s2_model, vcov. = vcovHC(s2_model))
@@ -150,6 +154,10 @@ coeftest(s2_model, vcov. = vcovHC(s2_model))
 # Checking zero-order relationship: M -> Y
 print("Checking zero-order relationship: M -> Y")
 coeftest(s3_model, vcov. = vcovHC(s3_model))
+
+# Checking moderation effect
+print("Checking moderation effect")
+coeftest(moderator_model, vcov. = vcovHC(moderator_model))
 ```
 
 
