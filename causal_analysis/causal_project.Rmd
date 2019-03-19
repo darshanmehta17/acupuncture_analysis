@@ -281,8 +281,6 @@ Limitation: We ignore those patients who did not give data at 3-months but had g
 We observe that there is no significant difference between any of the baseline covariate values the people who dropped-out of the study after 3-months. Therefore, this indicates that the bias due to dropout is unlikely.
 
 ```{r}
-<<<<<<< HEAD
-=======
 stay_data = subset(full_data, !is.na(full_data$delta5) & !is.na(full_data$delta2) & group == 1)
 dropout_data = subset(full_data, is.na(full_data$delta5) & !is.na(full_data$delta2) & group == 1)
 
